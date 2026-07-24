@@ -1,0 +1,890 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <meta name="description" content="SwissMaster - Ein moderner und flexibler Turnier-Manager für Schach. Unterstützt Einzel- und Mannschaftsturniere nach Schweizer System und Round-Robin." />
+    <title>♟️ SwissMaster</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;80&family=JetBrains+Mono:wght@700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>♟️ SwissMaster</h1>
+      <div class="nav-links">
+        <button
+          class="nav-btn"
+          id="nav-manage-tournaments"
+          onclick="openTournamentManager()"
+          title="Turniere verwalten"
+        >
+          Turniere
+        </button>
+        <button class="nav-btn active" data-target="setup">Setup</button>
+        <button
+          class="nav-btn"
+          data-target="pairings"
+          id="nav-pairings"
+          disabled
+        >
+          Paarungen
+        </button>
+        <button class="nav-btn" data-target="results" id="nav-results" disabled>
+          Ergebnisse
+        </button>
+        <button
+          class="nav-btn"
+          data-target="standings"
+          id="nav-standings"
+          disabled
+        >
+          Rangliste
+        </button>
+      </div>
+      <div class="nav-actions">
+        <button
+          class="btn secondary sm"
+          id="undo-btn"
+          onclick="undo()"
+          disabled
+          title="Rückgängig (Undo)"
+        >
+          ↩️
+        </button>
+        <button
+          class="btn secondary sm"
+          id="redo-btn"
+          onclick="redo()"
+          disabled
+          title="Wiederherstellen (Redo)"
+        >
+          ↪️
+        </button>
+        <button
+          class="btn secondary sm"
+          onclick="toggleTheme()"
+          id="theme-toggle"
+          title="Thema wechseln"
+        >
+          🌙
+        </button>
+        <button
+          class="btn danger sm"
+          onclick="resetTournament()"
+          title="Turnier zurücksetzen"
+        >
+          Reset
+        </button>
+      </div>
+    </header>
+    <div id="app">
+      <main>
+        <!-- SECTION: SETUP (TEAMS) -->
+        <section id="setup" class="view active">
+          <div class="setup-grid">
+            <div class="card setup-card shadow-md">
+              <h2>Turniereinstellungen</h2>
+              <div class="settings-grid">
+                <div class="section-title">Allgemein</div>
+                <div class="form-group full-width">
+                  <label for="tournament-name">Turniername</label>
+                  <input
+                    type="text"
+                    id="tournament-name"
+                    value="Tom Kahle"
+                    placeholder="Name des Turniers"
+                  />
+                </div>
+                <div class="form-group full-width">
+                  <label>Turniermodus</label>
+                  <div class="option-group" role="radiogroup">
+                    <label class="option-pill">
+                      <input
+                        type="radio"
+                        name="tournament-mode"
+                        value="TEAM"
+                        checked
+                      />
+                      <span>Mannschaftsturnier</span>
+                    </label>
+                    <label class="option-pill">
+                      <input
+                        type="radio"
+                        name="tournament-mode"
+                        value="SINGLES"
+                      />
+                      <span>Einzelturnier</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="section-title">Format</div>
+                <div class="form-group">
+                  <label for="pairing-system">System</label>
+                  <select id="pairing-system">
+                    <option value="SWISS">Schweizer S.</option>
+                    <option value="ROUND_ROBIN">Round Robin</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Bretter (pro Match)</label>
+                  <input
+                    type="number"
+                    id="boards-count"
+                    value="4"
+                    min="1"
+                    max="20"
+                  />
+                </div>
+                <div class="form-group">
+                  <label>Rundenanzahl</label>
+                  <input
+                    type="number"
+                    id="total-rounds"
+                    value="5"
+                    min="1"
+                    max="20"
+                  />
+                </div>
+
+                <div class="section-title">Regeln</div>
+                <div class="form-group full-width">
+                  <select id="rules-preset">
+                    <option value="FIDE">FIDE</option>
+                    <option value="USCF">USCF</option>
+                    <option value="CUSTOM">Benutzerdefiniert</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Punkte Sieg</label>
+                  <input type="number" id="points-win" value="2" />
+                </div>
+                <div class="form-group">
+                  <label>Punkte Remis</label>
+                  <input type="number" id="points-draw" value="1" />
+                </div>
+
+                <div class="section-title">Anzeige</div>
+                <div class="form-group full-width">
+                  <label>Team-Info anzeigen</label>
+                  <div class="option-group" id="team-display-fields">
+                    <label class="option-pill">
+                      <input type="checkbox" id="display-team-id" />
+                      <span>Team-ID</span>
+                    </label>
+                    <label class="option-pill">
+                      <input type="checkbox" id="display-team-note" checked />
+                      <span>Notiz</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card setup-card shadow-md">
+              <h2>Teams verwalten</h2>
+              <div class="team-input-row">
+                <input
+                  type="text"
+                  id="new-team-name"
+                  placeholder="Neues Team (z.B. Klasse 10B)"
+                  onkeydown="if (event.key === 'Enter') addTeam();"
+                />
+                <button class="btn primary" onclick="addTeam()">
+                  + Hinzufügen
+                </button>
+              </div>
+              <ul id="team-list" class="team-list">
+                <!-- Teams will be listed here -->
+              </ul>
+              <div class="actions" id="team-actions">
+                <button class="btn success large" onclick="startTournament()" id="start-team-btn">
+                  Turnier starten
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION: SETUP (SINGLES) -->
+        <section id="setup-singles" class="view">
+          <div class="setup-grid">
+            <div class="card setup-card shadow-md">
+              <h2>Turniereinstellungen (Einzel)</h2>
+              <div class="settings-grid">
+                <div class="section-title">Allgemein</div>
+                <div class="form-group full-width">
+                  <label for="tournament-name-singles">Turniername</label>
+                  <input
+                    type="text"
+                    id="tournament-name-singles"
+                    value="Einzelturnier"
+                    placeholder="Name des Turniers"
+                  />
+                </div>
+                <div class="form-group full-width">
+                  <label>Turniermodus</label>
+                  <div class="option-group" role="radiogroup">
+                    <label class="option-pill">
+                      <input type="radio" name="tournament-mode-singles" value="TEAM" />
+                      <span>Mannschaftsturnier</span>
+                    </label>
+                    <label class="option-pill">
+                      <input
+                        type="radio"
+                        name="tournament-mode-singles"
+                        value="SINGLES"
+                        checked
+                      />
+                      <span>Einzelturnier</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="section-title">Format</div>
+                <div class="form-group">
+                  <label for="pairing-system-singles">System</label>
+                  <select id="pairing-system-singles">
+                    <option value="SWISS">Schweizer S.</option>
+                    <option value="ROUND_ROBIN">Round Robin</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Rundenanzahl</label>
+                  <input
+                    type="number"
+                    id="total-rounds-singles"
+                    value="5"
+                    min="1"
+                    max="20"
+                  />
+                </div>
+
+                <div class="section-title">Regeln</div>
+                <div class="form-group full-width">
+                  <select id="rules-preset-singles">
+                    <option value="FIDE">FIDE</option>
+                    <option value="USCF">USCF</option>
+                    <option value="CUSTOM">Benutzerdefiniert</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Punkte Sieg</label>
+                  <input type="number" id="points-win-singles" value="1" />
+                </div>
+                <div class="form-group">
+                  <label>Punkte Remis</label>
+                  <input type="number" id="points-draw-singles" value="0.5" />
+                </div>
+
+                <div class="section-title">Anzeige</div>
+                <div class="form-group full-width">
+                  <label>Spieler-Info anzeigen</label>
+                  <div class="option-group" id="singles-display-fields">
+                    <label class="option-pill">
+                      <input type="checkbox" id="display-firstname" checked />
+                      <span>Vorname</span>
+                    </label>
+                    <label class="option-pill">
+                      <input type="checkbox" id="display-lastname" checked />
+                      <span>Nachname</span>
+                    </label>
+                    <label class="option-pill">
+                      <input type="checkbox" id="display-external-id" checked />
+                      <span>ID</span>
+                    </label>
+                    <label class="option-pill">
+                      <input type="checkbox" id="display-note" checked />
+                      <span>Text/Notiz</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card setup-card shadow-md">
+              <h2>Spieler verwalten</h2>
+              <div class="team-input-row">
+                <input
+                  type="text"
+                  id="new-player-name"
+                  placeholder="Neuer Spieler (z.B. Max Mustermann)"
+                  onkeydown="if (event.key === 'Enter') addPlayer();"
+                />
+                <button class="btn primary" onclick="addPlayer()">
+                  + Hinzufügen
+                </button>
+                <button
+                  class="btn secondary"
+                  onclick="openBulkPlayerImportModal()"
+                  title="Spieler aus Tabelle einfügen"
+                >
+                  📋 Einfügen
+                </button>
+              </div>
+              <ul id="player-list" class="team-list">
+                <!-- Players will be listed here -->
+              </ul>
+              <div class="actions" id="singles-actions">
+                <button
+                  class="btn success large"
+                  onclick="startSinglesTournament()"
+                  id="start-singles-btn"
+                >
+                  Einzelturnier starten
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION: PAIRINGS (TEAMS) -->
+        <section id="pairings" class="view">
+          <div class="header-row">
+            <h2 id="round-display-pairings">Runde 1</h2>
+            <div class="header-actions">
+              <button class="btn secondary sm" onclick="openPairingSwapModal()">
+                Paarungen bearbeiten
+              </button>
+              <button class="btn secondary sm" onclick="printActiveView()">
+                Drucken
+              </button>
+              <button class="btn primary sm" onclick="goToResults()">
+                Ergebnisse →
+              </button>
+            </div>
+          </div>
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Brett</th>
+                  <th>Weiß</th>
+                  <th class="center">Punkte</th>
+                  <th class="center">vs</th>
+                  <th>Schwarz</th>
+                  <th class="center">Punkte</th>
+                </tr>
+              </thead>
+              <tbody id="pairings-body">
+                <!-- Pairings go here -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- SECTION: PAIRINGS (SINGLES) -->
+        <section id="pairings-singles" class="view">
+          <div class="header-row">
+            <h2 id="round-display-pairings-singles">Runde 1</h2>
+            <div class="header-actions">
+              <button class="btn secondary sm" onclick="printActiveView()">
+                Drucken
+              </button>
+              <button class="btn primary sm" onclick="goToSinglesResults()">
+                Ergebnisse →
+              </button>
+            </div>
+          </div>
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Brett</th>
+                  <th>Weiß</th>
+                  <th class="center">Punkte</th>
+                  <th class="center">vs</th>
+                  <th>Schwarz</th>
+                  <th class="center">Punkte</th>
+                </tr>
+              </thead>
+              <tbody id="pairings-body-singles">
+                <!-- Pairings go here -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- SECTION: RESULTS (TEAMS) -->
+        <section id="results" class="view">
+          <div class="header-row">
+            <h2 id="round-display-results">Ergebnisse Runde 1</h2>
+            <div class="header-actions">
+              <button class="btn secondary sm" onclick="printActiveView()">
+                Drucken
+              </button>
+              <button
+                class="btn primary sm"
+                id="next-round-btn"
+                onclick="nextRound()"
+                disabled
+              >
+                Nächste Runde →
+              </button>
+            </div>
+          </div>
+          <div id="results-container">
+            <!-- Match cards will be generated here -->
+          </div>
+        </section>
+
+        <!-- SECTION: RESULTS (SINGLES) -->
+        <section id="results-singles" class="view">
+          <div class="header-row">
+            <h2 id="round-display-results-singles">Ergebnisse Runde 1</h2>
+            <div class="header-actions">
+              <button class="btn secondary sm" onclick="printActiveView()">
+                Drucken
+              </button>
+              <button
+                class="btn primary sm"
+                id="next-round-btn-singles"
+                onclick="nextSinglesRound()"
+                disabled
+              >
+                Nächste Runde →
+              </button>
+            </div>
+          </div>
+          <div id="results-container-singles">
+            <!-- Match cards will be generated here -->
+          </div>
+        </section>
+
+        <!-- SECTION: STANDINGS (TEAMS) -->
+        <section id="standings" class="view">
+          <div class="header-row">
+            <h2>Rangliste</h2>
+            <div class="header-actions">
+              <button
+                class="btn success sm"
+                id="add-round-btn"
+                onclick="addExtraRound()"
+                style="display: none"
+              >
+                + Runde hinzufügen
+              </button>
+              <button class="btn secondary sm" onclick="exportStandingsToCSV()">
+                ⬇️ Export CSV
+              </button>
+              <button
+                class="btn secondary sm"
+                onclick="exportTournamentToJSON()"
+              >
+                ⬇️ Export JSON
+              </button>
+              <button
+                class="btn secondary sm"
+                onclick="triggerImportTournament()"
+              >
+                ⬆️ Import JSON
+              </button>
+              <button class="btn secondary sm" onclick="printActiveView()">
+                Drucken
+              </button>
+            </div>
+          </div>
+          <div class="table-container shadow-sm">
+            <div class="table-responsive">
+              <table class="data-table ranking-table">
+                <thead>
+                  <tr>
+                    <th>Rang</th>
+                    <th>Team</th>
+                    <th class="center">MP</th>
+                    <th class="center">BP</th>
+                    <th class="center">Buchholz</th>
+                    <th class="center">Med. BH</th>
+                    <th class="center">SB</th>
+                  </tr>
+                </thead>
+                <tbody id="standings-body">
+                  <!-- Standings rows -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION: STANDINGS (SINGLES) -->
+        <section id="standings-singles" class="view">
+          <div class="header-row">
+            <h2>Rangliste (Einzel)</h2>
+            <div class="header-actions">
+              <button
+                class="btn secondary sm"
+                onclick="exportSinglesStandingsToCSV()"
+              >
+                ⬇️ Export CSV
+              </button>
+              <button
+                class="btn secondary sm"
+                onclick="exportSinglesTournamentToJSON()"
+              >
+                ⬇️ Export JSON
+              </button>
+              <button class="btn secondary sm" onclick="printActiveView()">
+                Drucken
+              </button>
+            </div>
+          </div>
+          <div class="table-container shadow-sm">
+            <div class="table-responsive">
+              <table class="data-table ranking-table">
+                <thead>
+                  <tr>
+                    <th>Rang</th>
+                    <th>Spieler</th>
+                    <th class="center">Punkte</th>
+                    <th class="center">Buchholz</th>
+                  </tr>
+                </thead>
+                <tbody id="standings-body-singles">
+                  <!-- Standings rows -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- Team Detail -->
+    <div id="team-detail-modal" class="modal hidden">
+      <div class="modal-content large">
+        <div class="modal-header">
+          <h3 id="detail-team-name">Team Name</h3>
+          <button class="close-btn" onclick="closeTeamDetail()">×</button>
+        </div>
+        <div id="team-detail-content"><!-- History table goes here --></div>
+      </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Hidden file input for imports -->
+    <input
+      type="file"
+      id="import-file-input"
+      accept="application/json"
+      style="display: none"
+    />
+
+    <!-- Generic Alert -->
+    <div id="alert-modal" class="modal hidden">
+      <div class="modal-content sm">
+        <h3 id="alert-title">Hinweis</h3>
+        <p id="alert-message">Nachricht</p>
+        <div class="modal-actions end">
+          <button class="btn primary" onclick="closeAlert()">OK</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Generic Confirm -->
+    <div id="confirm-modal" class="modal hidden">
+      <div class="modal-content sm">
+        <h3 id="confirm-title">Bestätigung</h3>
+        <p id="confirm-message">Sind Sie sicher?</p>
+        <div class="modal-actions end">
+          <button class="btn secondary" id="confirm-cancel-btn">
+            Abbrechen
+          </button>
+          <button class="btn danger" id="confirm-ok-btn">Ja, machen</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reset Options -->
+    <div id="reset-options-modal" class="modal hidden">
+      <div class="modal-content sm">
+        <h3>Turnier zurücksetzen</h3>
+        <p id="reset-options-message">Teams/Spieler löschen oder behalten?</p>
+        <div class="modal-actions end">
+          <button class="btn secondary" onclick="closeResetOptionsModal()">
+            Abbrechen
+          </button>
+          <button class="btn secondary" onclick="resetKeepRoster()">
+            Behalten
+          </button>
+          <button class="btn danger" onclick="resetRemoveRoster()">
+            Löschen
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Exclude Teams -->
+    <div id="exclude-modal" class="modal hidden">
+      <div class="modal-content">
+        <h3>Teams für diese Runde ausschließen</h3>            <p>Wähle Teams aus, die in dieser Runde nicht spielen können:</p>
+            <label for="exclude-teams-search" class="modal-search-label">Suche</label>
+            <input
+              type="search"
+              id="exclude-teams-search"
+              class="modal-search"
+              placeholder="Teams suchen..."
+              aria-label="Teams suchen"
+              oninput="filterExcludeList(this.value, 'exclude-teams-list')"
+            />
+            <div id="exclude-teams-list" class="exclude-list"></div>
+            <p id="exclude-teams-no-results" class="no-results hidden">Keine Teams gefunden</p>
+        <div class="modal-actions">
+          <button class="btn secondary" onclick="closeExcludeModal()">
+            Abbrechen
+          </button>
+          <button class="btn primary" onclick="confirmExcludeAndPair()">
+            Paarungen erstellen
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Exclude Players -->
+    <div id="exclude-singles-modal" class="modal hidden">
+      <div class="modal-content">
+        <h3>Spieler für diese Runde ausschließen</h3>            <p>Wähle Spieler aus, die in dieser Runde nicht spielen können:</p>
+            <label for="exclude-players-search" class="modal-search-label">Suche</label>
+            <input
+              type="search"
+              id="exclude-players-search"
+              class="modal-search"
+              placeholder="Spieler suchen..."
+              aria-label="Spieler suchen"
+              oninput="filterExcludeList(this.value, 'exclude-players-list')"
+            />
+            <div id="exclude-players-list" class="exclude-list"></div>
+            <p id="exclude-players-no-results" class="no-results hidden">Keine Spieler gefunden</p>
+        <div class="modal-actions">
+          <button class="btn secondary" onclick="closeExcludeSinglesModal()">
+            Abbrechen
+          </button>
+          <button class="btn primary" onclick="confirmExcludeSinglesAndPair()">
+            Paarungen erstellen
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Forced Pairings (Teams) -->
+    <div id="forced-pairing-modal" class="modal hidden">
+      <div class="modal-content">
+        <h3>Fixe Paarungen festlegen</h3>
+        <p>
+          Wähle Teams aus, die in dieser Runde gegeneinander spielen sollen. Die
+          restlichen Teams werden automatisch zugelost.
+        </p>
+        <label for="forced-pairs-search" class="modal-search-label">Suche</label>
+        <input
+          type="search"
+          id="forced-pairs-search"
+          class="modal-search"
+          placeholder="Team suchen..."
+          aria-label="Team suchen"
+          oninput="filterForcedPairsSearch(this.value, 'forced-pairs-list')"
+        />
+        <div id="forced-pairs-list" class="forced-pairs-list"></div>
+        <button class="btn secondary sm" onclick="addForcedPairRow()">
+          + Paarung hinzufügen
+        </button>
+        <div class="modal-actions">
+          <button class="btn secondary" onclick="closeForcedPairingModal()">
+            Abbrechen
+          </button>
+          <button class="btn primary" onclick="confirmForcedPairsAndGenerate()">
+            Paarungen erstellen
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Forced Pairings (Singles) -->
+    <div id="forced-pairing-singles-modal" class="modal hidden">
+      <div class="modal-content">
+        <h3>Fixe Paarungen festlegen</h3>
+        <p>
+          Wähle Spieler aus, die in dieser Runde gegeneinander spielen sollen.
+          Die restlichen Spieler werden automatisch zugelost.
+        </p>
+        <label for="forced-pairs-singles-search" class="modal-search-label">Suche</label>
+        <input
+          type="search"
+          id="forced-pairs-singles-search"
+          class="modal-search"
+          placeholder="Spieler suchen..."
+          aria-label="Spieler suchen"
+          oninput="filterForcedPairsSearch(this.value, 'forced-pairs-singles-list')"
+        />
+        <div id="forced-pairs-singles-list" class="forced-pairs-list"></div>
+        <button class="btn secondary sm" onclick="addForcedSinglesPairRow()">
+          + Paarung hinzufügen
+        </button>
+        <div class="modal-actions">
+          <button
+            class="btn secondary"
+            onclick="closeForcedPairingSinglesModal()"
+          >
+            Abbrechen
+          </button>
+          <button
+            class="btn primary"
+            onclick="confirmForcedSinglesPairsAndGenerate()"
+          >
+            Paarungen erstellen
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pairing Swap -->
+    <div id="pairing-swap-modal" class="modal hidden">
+      <div class="modal-content">
+        <h3>Paarungen tauschen</h3>
+        <p>Wähle zwei Teamslots, die getauscht werden sollen:</p>
+        <div class="form-group">
+          <label for="swap-slot-a">Slot A</label>
+          <select id="swap-slot-a"></select>
+        </div>
+        <div class="form-group">
+          <label for="swap-slot-b">Slot B</label>
+          <select id="swap-slot-b"></select>
+        </div>
+        <div class="modal-actions">
+          <button class="btn secondary" onclick="closePairingSwapModal()">
+            Abbrechen
+          </button>
+          <button class="btn primary" onclick="confirmPairingSwap()">
+            Tauschen
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bulk Player Import -->
+    <div id="bulk-player-import-modal" class="modal hidden">
+      <div class="modal-content large">
+        <div class="modal-header">
+          <h3>Spieler aus Tabelle einfügen</h3>
+          <button class="close-btn" onclick="closeBulkPlayerImportModal()">
+            ×
+          </button>
+        </div>
+        <p>
+          Füge hier Daten aus einer Tabelle ein. Wähle das Format, bevor du
+          einfügst.
+        </p>          <div class="bulk-import-format">
+            <div class="form-group">
+              <label for="bulk-import-delimiter">Trennzeichen</label>
+              <select id="bulk-import-delimiter" onchange="onBulkImportDelimiterChange()">
+                <option value="auto">Automatisch</option>
+                <option value="\t">Tabulator</option>
+                <option value=",">Komma</option>
+                <option value=";">Semikolon</option>
+                <option value="custom">Benutzerdefiniert</option>
+              </select>
+              <input
+                type="text"
+                id="bulk-import-custom-delimiter"
+                placeholder="Trennzeichen"
+                style="display: none; margin-top: 0.5rem"
+                oninput="onBulkImportDelimiterChange()"
+              />
+            </div>
+
+            <div class="form-group">
+              <label>Optionen</label>
+              <label class="bulk-import-checkbox">
+                <input
+                  type="checkbox"
+                  id="bulk-import-skip-header"
+                  onchange="updateBulkImportPreview()"
+                />
+                Erste Zeile ist Header
+              </label>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Spaltenzuordnung</label>
+            <div id="bulk-import-column-mapping" class="bulk-import-mapping">
+              <!-- Mapping selects generated by JS -->
+            </div>
+          </div>
+
+        <div class="form-group">
+          <label for="bulk-import-textarea">Tabellendaten</label>
+          <textarea
+            id="bulk-import-textarea"
+            placeholder="Max Mustermann 123&#10;Erika Muster 456"
+            oninput="updateBulkImportPreview()"
+          ></textarea>
+        </div>
+
+        <div id="bulk-import-preview-container" class="bulk-import-preview hidden">
+          <label>Vorschau</label>
+          <div class="table-responsive">
+            <table class="data-table" id="bulk-import-preview-table">
+              <thead></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <p id="bulk-import-summary" class="bulk-import-summary"></p>
+        </div>
+
+        <div class="modal-actions">
+          <button
+            class="btn secondary"
+            onclick="closeBulkPlayerImportModal()"
+          >
+            Abbrechen
+          </button>
+          <button class="btn primary" onclick="confirmBulkPlayerImport()">
+            Spieler importieren
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tournament Manager -->
+    <div id="tournament-manager-modal" class="modal hidden">
+      <div class="modal-content large">
+        <div class="modal-header">
+          <h3>Turniere verwalten</h3>
+          <button class="close-btn" onclick="closeTournamentManager()">
+            ×
+          </button>
+        </div>
+        <div class="tournament-list-container">
+          <ul id="tournament-list" class="tournament-list">
+            <!-- List items injected here -->
+          </ul>
+        </div>
+        <div class="modal-actions">
+          <button class="btn primary" onclick="createNewTournamentUI()">
+            + Neues Turnier
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script src="js/models.js"></script>
+    <script src="js/state/core.js"></script>
+    <script src="js/state/normalize.js"></script>
+    <script src="js/state/storage.js"></script>
+    <script src="js/state/history.js"></script>
+    <script src="js/logic/standings.js"></script>
+    <script src="js/logic/pairings.js"></script>
+    <script src="js/ui/core.js"></script>
+    <script src="js/ui/interactions.js"></script>
+    <script src="js/ui/actions.js"></script>
+    <script src="js/export.js"></script>
+    <script src="js/main.js"></script>
+  </body>
+</html>
